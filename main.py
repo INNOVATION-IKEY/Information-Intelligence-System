@@ -21,22 +21,12 @@ def main():
 
     from data.pool import DATA_SOURCE_POOL
 
-    import re
-
-    if not DATA_SOURCE_POOL:
-        print("错误: 数据源为空")
-        sys.exit(1)
-
     if args.list_dates:
         dates = sorted(DATA_SOURCE_POOL.keys())
         print("可用数据日期:")
         for d in dates:
             print(f"  {d} ({len(DATA_SOURCE_POOL[d])}条)")
         return
-
-    if args.date and not re.match(r'^\d{4}-\d{2}-\d{2}$', args.date):
-        print(f"错误: 日期格式不正确，请使用 YYYY-MM-DD 格式")
-        sys.exit(1)
 
     target_date = args.date or (sorted(DATA_SOURCE_POOL.keys())[-1])
 

@@ -3,6 +3,7 @@
 import json
 import os
 import zipfile
+from typing import Dict, List, Any, Optional
 
 
 class ReportExporter:
@@ -11,25 +12,26 @@ class ReportExporter:
         os.makedirs(output_dir, exist_ok=True)
 
     def _to_markdown(self, report):
-        md = f"""# NEXUS 前沿科技日报 — {report['date']}
+        metadata = report.get('metadata', {})
+        md = f"""# NEXUS 前沿科技日报 — {report.get('date', '未知')}
 
-> 生成时间: {report['generated_at']}  |  总耗时: {report['elapsed']}s
+> 生成时间: {report.get('generated_at', '')}  |  总耗时: {report.get('elapsed', 0)}s
 
 ## 全局洞察
 
-{report['global_insight']}
+{report.get('global_insight', '暂无')}
 
 ## 统计概览
 
 | 指标 | 数值 |
 |------|------|
-| 总采集 | {report['metadata']['total_collected']} |
-| A类可信度 | {report['metadata']['grade_a']} |
-| B类可信度 | {report['metadata']['grade_b']} |
-| C类可信度 | {report['metadata']['grade_c']} |
-| 高影响力 | {report['metadata']['high_impact']} |
-| 上升趋势 | {report['metadata']['up_trend']} |
-| 跨域关联 | {report['metadata']['cross_domain_links']} |
+| 总采集 | {metadata.get('total_collected', 0)} |
+| A类可信度 | {metadata.get('grade_a', 0)} |
+| B类可信度 | {metadata.get('grade_b', 0)} |
+| C类可信度 | {metadata.get('grade_c', 0)} |
+| 高影响力 | {metadata.get('high_impact', 0)} |
+| 上升趋势 | {metadata.get('up_trend', 0)} |
+| 跨域关联 | {metadata.get('cross_domain_links', 0)} |
 
 ## TOP 推荐
 
@@ -63,26 +65,38 @@ class ReportExporter:
     def _to_json(self, report):
         return json.dumps(report, ensure_ascii=False, indent=2)
 
-    def _to_log(self, logs):
+    def _to_log(self, logs: List[Any]) -> str:
+        """将日志条目转换为文本格式"""
         lines = []
         for entry in logs:
-            if hasattr(entry, 'time_str') and hasattr(entry, 'agent_type') and hasattr(entry, 'agent') and hasattr(entry, 'level') and hasattr(entry, 'message'):
-                lines.append(f"[{entry.time_str}] [{entry.agent_type}/{entry.agent}] {entry.level.upper()}: {entry.message}")
+            if hasattr(entry, 'time_str') and hasattr(entry, 'agent_type'):
+                agent = getattr(entry, 'agent', '')
+                level = getattr(entry, 'level', 'info').upper()
+                message = getattr(entry, 'message', '')
+                lines.append(f"[{entry.time_str}] [{entry.agent_type}/{agent}] {level}: {message}")
         return "\n".join(lines)
 
-    def _to_summary(self, report):
+    def _to_summary(self, report: Dict[str, Any]) -> str:
+        """生成日报摘要"""
         lines = [
-            f"NEXUS 日报摘要 — {report['date']}",
+            f"NEXUS 日报摘要 — {report.get('date', '未知')}",
             "=" * 40,
-            report['global_insight'],
+            report.get('global_insight', '暂无'),
             "",
             "TOP 推荐:",
         ]
-        for pick in report['top_picks'][:3]:
-            lines.append(f"  #{pick['rank']} {pick['title'][:40]}...")
+        
+        for pick in report.get('top_picks', [])[:3]:
+            title = pick.get('title', '')[:40]
+            if len(pick.get('title', '')) > 40:
+                title += "..."
+            lines.append(f"  #{pick.get('rank', 0)} {title}")
+        
         lines.append("")
-        dist_parts = [f"{s['label']}({len(s['items'])}条)" for s in report['sections']]
+        sections = report.get('sections', [])
+        dist_parts = [f"{s.get('label', '')}({len(s.get('items', []))}条)" for s in sections]
         lines.append(f"领域分布: {', '.join(dist_parts)}")
+        
         return "\n".join(lines)
 
     def _readme(self):
